@@ -1,0 +1,155 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// NOTE: SQLite does not support native enums, so these are stored as String.
+// Role:             ADMIN | SPONSOR | SEEKER
+// BountyStatus:     PENDING_PAYMENT | OPEN | IN_REVIEW | COMPLETED | CANCELLED
+// SubmissionStatus: SUBMITTED | WINNER | REJECTED
+// PaymentType:      BOUNTY_POST | TOKEN_TOPUP
+// PaymentStatus:    PENDING | PAID | EXPIRED | FAILED
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String?
+  googleId     String?   @unique
+  name         String
+  role         String    @default("SEEKER")
+  bio          String?
+  avatarColor  String    @default("#2f56f5")
+  image        String? // uploaded avatar (data URL)
+  bannedAt     DateTime?
+
+  // Seeker token economy
+  freeTokens    Int    @default(3)
+  paidTokens    Int    @default(0)
+  tokenResetKey String @default("") // "YYYY-MM" of the last reset
+  earnings      Int    @default(0) // total bounty won (Rp)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bounties    Bounty[]     @relation("SponsorBounties")
+  wonBounties Bounty[]     @relation("BountyWinner")
+  submissions Submission[]
+  payments    Payment[]
+  comments    Comment[]
+}
+
+model Category {
+  id       String   @id @default(cuid())
+  name     String   @unique
+  slug     String   @unique
+  icon     String   @default("sparkles")
+  color    String   @default("#2f56f5")
+  order    Int      @default(0)
+  bounties Bounty[]
+}
+
+model Bounty {
+  id           String @id @default(cuid())
+  title        String
+  slug         String @unique
+  description  String
+  requirements String @default("")
+  status       String @default("PENDING_PAYMENT")
+
+  bountyAmount Int // Rp reward for winner
+  adminFee     Int // Rp platform fee
+  totalPaid    Int // bountyAmount + adminFee
+
+  deadline DateTime
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  sponsorId String
+  sponsor   User   @relation("SponsorBounties", fields: [sponsorId], references: [id])
+
+  winnerId String?
+  winner   User?   @relation("BountyWinner", fields: [winnerId], references: [id])
+
+  submissions Submission[]
+  payments    Payment[]
+  comments    Comment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([categoryId])
+}
+
+model Comment {
+  id       String @id @default(cuid())
+  content  String
+
+  bountyId String
+  bounty   Bounty @relation(fields: [bountyId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([bountyId])
+}
+
+model Submission {
+  id     String @id @default(cuid())
+  link   String
+  note   String
+  status String @default("SUBMITTED")
+
+  bountyId String
+  bounty   Bounty @relation(fields: [bountyId], references: [id], onDelete: Cascade)
+
+  seekerId String
+  seeker   User   @relation(fields: [seekerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([bountyId, seekerId])
+  @@index([bountyId])
+}
+
+model Payment {
+  id        String @id @default(cuid())
+  reference String @unique
+  type      String
+  status    String @default("PENDING")
+  amount    Int
+
+  qrisString String  @default("")
+  qrisImage  String  @default("") // data URL of QR image
+  externalId String? // gateway transaction id
+
+  tokenAmount Int? // for TOKEN_TOPUP
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  bountyId String?
+  bounty   Bounty? @relation(fields: [bountyId], references: [id], onDelete: SetNull)
+
+  expiresAt DateTime
+  paidAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([status])
+}
+
+model Setting {
+  id              Int @id @default(1)
+  adminFeePercent Int @default(10) // % fee on bounties
+  minBounty       Int @default(50000)
+  tokenPrice      Int @default(5000) // Rp per extra token
+  freeTokens      Int @default(3)
+}

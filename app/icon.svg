@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" rx="18" fill="#2f56f5"/>
+  <g fill="none" stroke="#ffffff" stroke-width="2.4">
+    <ellipse cx="26" cy="20" rx="12" ry="5"/>
+    <path d="M14 20v16c0 2.8 5.4 5 12 5s12-2.2 12-5V20" stroke-linecap="round"/>
+    <path d="M14 28c0 2.8 5.4 5 12 5s12-2.2 12-5"/>
+    <circle cx="40" cy="42" r="11" fill="#2f56f5"/>
+  </g>
+  <text x="40" y="46.5" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="700" fill="#ffffff">Rp</text>
+</svg>
